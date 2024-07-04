@@ -4,6 +4,8 @@ import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
 
 const signToken = (id) => {
+  console.log("JWT SECRET",process.env.JWT_SECRET)
+  console.log("JWT EXPIRES IN",process.env.JWT_EXPIRES_IN)
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
@@ -11,6 +13,7 @@ const signToken = (id) => {
 
 const createSendToken = (user, statusCode, req, res) => {
   const token = signToken(user._id);
+  console.log(token)
   // Remove password from output
   user.password = undefined;
 
@@ -23,6 +26,7 @@ const createSendToken = (user, statusCode, req, res) => {
 
 export const register = catchAsync(async (req, res, next) => {
   const existUser = await User.findOne({ email: req.body.email });
+  console.log(existUser)
   if (existUser) {
     return next(new AppError("Email already exists", 400));
   }
@@ -31,6 +35,7 @@ export const register = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
   });
+  console.log('user', user)
 
   createSendToken(user, 201, req, res);
 });
@@ -62,7 +67,6 @@ export const login = catchAsync(async (req, res, next) => {
 });
 
 export const protect = catchAsync(async (req, res, next) => {
-  // 1) Getting token and check if it's there
   let token;
   if (
     req.headers.authorization &&
@@ -74,25 +78,30 @@ export const protect = catchAsync(async (req, res, next) => {
     return next(new AppError("You are not logged in", 401));
   }
 
-  // 2) Verification token
-  const decoded = await jwt.verify(token, process.env.JWT_SECRET);
-  // 3) Check if user still exists
-  const user = await User.findById(decoded.id);
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
 
-  if (!user) {
-    return next(
-      new AppError("The user belonging to this token does no longer exist", 401)
-    );
+    if (!user) {
+      return next(
+        new AppError("The user belonging to this token does no longer exist", 401)
+      );
+    }
+
+    if (user.changedPasswordAfter(decoded.iat)) {
+      return next(
+        new AppError("User recently changed password! Please log in again", 401)
+      );
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      return next(new AppError("Your token has expired. Please log in again.", 401));
+    }
+    return next(new AppError("Invalid token. Please log in again.", 401));
   }
-  // 4) Check if user changed password after the token was issued
-  if (user.changedPasswordAfter(decoded.iat)) {
-    return next(
-      new AppError("User recently changed password! Please log in again", 401)
-    );
-  }
-  // GRANT ACCESS TO PROTECTED ROUTE
-  req.user = user;
-  next();
 });
 
 export const updatePassword = catchAsync(async (req, res, next) => {
@@ -114,7 +123,9 @@ export const updatePassword = catchAsync(async (req, res, next) => {
 });
 
 export const geUserCredentials = catchAsync(async (req, res, next) => {
+  console.log("haha")
   const user = await User.findById(req.user.id);
+  console.log(user)
   if (!user) {
     return next(new AppError("User not found", 404));
   }

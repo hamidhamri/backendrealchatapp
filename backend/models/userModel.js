@@ -32,12 +32,12 @@ const userSchema = new mongoose.Schema(
     profilePicture: {
       type: String,
       default:
-        "https://hamidhamrichatapp.blob.core.windows.net/chatapp/default.jpg",
+        "https://res.cloudinary.com/dnnaq2dbk/image/upload/v1720102860/biehu3hxdtiinwfcpudu.jpg",
     },
     coverPicture: {
       type: String,
       default:
-        "https://hamidhamrichatapp.blob.core.windows.net/chatapp/defaultCover.jpg",
+        "https://res.cloudinary.com/dnnaq2dbk/image/upload/v1720102995/khgcfmnywawysz94goyb.jpg",
     },
     notifications: [
       {

@@ -5,6 +5,8 @@ import { Server } from "socket.io";
 
 dotenv.config({ path: "./.env" });
 
+let uri = "mongodb+srv://hamidhamri:ikPoGwqYuiqLDlv8@backendrealchatapp.7o2kkfk.mongodb.net/?appName=backendrealchatapp"
+
 mongoose
   .connect(process.env.MONGOOSE_URL, {
     useNewUrlParser: true,
@@ -27,7 +29,6 @@ const io = new Server(server, {
   cors: {
     origin: [
       process.env.URL_SOCKET_CLIENT,
-      "https://hamidhamrichatapp.netlify.app",
       "https://192.168.1.254:3000",
     ],
     credentials: true,
