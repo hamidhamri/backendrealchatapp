@@ -44,7 +44,7 @@ router.post(
       // );
       // res.send(`/images/resize-${postImage[0].filename}`);
       // console.log(postImage[0].filename);
-      console.log(postImage[0]);
+      // console.log(postImage[0]);
       res.send(`/${postImage[0].path}`);
     }
     if (profilePic) {

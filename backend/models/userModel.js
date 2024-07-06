@@ -44,6 +44,10 @@ const userSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
       },
     ],
+    refreshToken: {
+      type: String,
+      default: null,
+    },
     about: String,
     living: String,
     working: String,

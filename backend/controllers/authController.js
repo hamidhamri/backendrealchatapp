@@ -4,29 +4,41 @@ import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
 
 const signToken = (id) => {
-  console.log("JWT SECRET",process.env.JWT_SECRET)
-  console.log("JWT EXPIRES IN",process.env.JWT_EXPIRES_IN)
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
   });
 };
 
-const createSendToken = (user, statusCode, req, res) => {
-  const token = signToken(user._id);
-  console.log(token)
-  // Remove password from output
-  user.password = undefined;
 
+
+
+
+const createSendToken = async(user, statusCode, req, res) => {
+  const accessToken = signToken(user._id);
+  const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
+  });
+
+  // Save refreshToken in the user model
+  try{
+    user.refreshToken = refreshToken;
+    await user.save();
+  }catch (err){
+    console.log(err, "user not saved")
+  }
+
+  delete user.password;
   res.status(statusCode).json({
     status: "success",
-    token,
+    token:accessToken,
+    refreshToken,
     data: user,
   });
-};
+}
+
 
 export const register = catchAsync(async (req, res, next) => {
   const existUser = await User.findOne({ email: req.body.email });
-  console.log(existUser)
   if (existUser) {
     return next(new AppError("Email already exists", 400));
   }
@@ -35,9 +47,7 @@ export const register = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
   });
-  console.log('user', user)
-
-  createSendToken(user, 201, req, res);
+   await createSendToken(user, 201, req, res);
 });
 
 export const login = catchAsync(async (req, res, next) => {
@@ -65,6 +75,46 @@ export const login = catchAsync(async (req, res, next) => {
   // 3) If everything ok, send token to client
   createSendToken(user, 200, req, res);
 });
+
+
+
+
+export const refreshToken = catchAsync(async (req, res, next) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) {
+    return next(new AppError("Refresh Token is required", 400));
+  }
+
+
+
+
+  let decoded;
+  decoded = jwt.verify(refreshToken, process.env.JWT_SECRET,{ ignoreExpiration: true });
+  const user = await User.findById(decoded.id);
+
+
+
+  // console.log(refreshToken)
+  // console.log(user.refreshToken)
+  if (!user || user.refreshToken !== refreshToken) {
+    return next(new AppError("Invalid Refresh Token", 401));
+  }
+
+  // Generate new tokens
+  const newAccessToken = signToken(user._id);
+  const newRefreshToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
+  });
+
+  user.refreshToken = newRefreshToken;
+  await user.save();
+
+  // console.log("EVERYTHING IS FINE")
+  res.status(200).json({
+    token:newAccessToken,
+    refreshToken: newRefreshToken,
+  });
+})
 
 export const protect = catchAsync(async (req, res, next) => {
   let token;
@@ -123,9 +173,9 @@ export const updatePassword = catchAsync(async (req, res, next) => {
 });
 
 export const geUserCredentials = catchAsync(async (req, res, next) => {
-  console.log("haha")
+  // console.log("haha")
   const user = await User.findById(req.user.id);
-  console.log(user)
+  // console.log(user)
   if (!user) {
     return next(new AppError("User not found", 404));
   }
