@@ -6,7 +6,7 @@
   "type": "module",
   "stack": "heroku-22",
   "scripts": {
-    "start": "nodemon index.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "bcrypt": "^5.0.1",
